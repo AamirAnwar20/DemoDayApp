@@ -19,7 +19,6 @@ extension UIImageView {
         /*
          1) Download task saves data locally automatically instead of in memory
          2) URL passed into the closure is the path to the image and not its web URL 
-         3)
          */
         let downloadTask = session.downloadTask(with: url, completionHandler : { [weak self] url, response, error in
             
