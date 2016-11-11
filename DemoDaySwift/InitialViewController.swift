@@ -24,6 +24,8 @@ class InitialViewController: UIViewController, UITableViewDelegate, UITableViewD
         // HARD CODED DATA
         //        datasource?.append((title:"Free Pizza", subtitle: "No really"))
         
+        URLCache.shared = URLCache(memoryCapacity: 4*1024*1024, diskCapacity: 40*1024*1024, diskPath: nil)
+        
         let requestURL = URL(string: "https://alpha-api.app.net/stream/0/posts/stream/global")!
         let urlRequest = URLRequest (url: requestURL)
         let session = URLSession.shared

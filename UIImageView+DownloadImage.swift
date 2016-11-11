@@ -10,7 +10,7 @@ import UIKit
 
 extension UIImageView {
 
-    func loadImage (url:URL) -> URLSessionDownloadTask {
+    func loadImage (urlRequest:URLRequest) -> URLSessionDownloadTask {
         
         // Get shared session
         let session = URLSession.shared
@@ -20,12 +20,16 @@ extension UIImageView {
          1) Download task saves data locally automatically instead of in memory
          2) URL passed into the closure is the path to the image and not its web URL 
          */
-        let downloadTask = session.downloadTask(with: url, completionHandler : { [weak self] url, response, error in
+        let downloadTask = session.downloadTask(with: urlRequest, completionHandler : { [weak self] url, response, error in
             
             // Check if error is nil and THEN unwrap the optionals passed in the completion handler
             if error == nil, let url = url,
                              let data = try? Data(contentsOf:url),
-                             let image = UIImage(data: data) {
+                             let image = UIImage(data: data),
+                             let response = response
+            {
+                
+                URLCache.shared.storeCachedResponse(CachedURLResponse.init(response: response, data: data), for: urlRequest)
                 
                 DispatchQueue.main.async {
                     

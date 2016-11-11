@@ -22,7 +22,15 @@ class SwiftDemoDayTableViewCell: UITableViewCell {
         titleLabel?.text = title
         subtitleLabel?.text = subtitle
         demoDayImageView.image = UIImage(named: "PlaceHolder")
-        downloadTask = demoDayImageView.loadImage(url: imageURL)
+        
+        let request = URLRequest(url: imageURL, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 90.0)
+        
+        if let data = URLCache.shared.cachedResponse(for: request)?.data {
+            demoDayImageView.image = UIImage(data: data)
+        }
+        else {
+            downloadTask = demoDayImageView.loadImage(urlRequest: request)
+        }
     }
     
     override func prepareForReuse() {
