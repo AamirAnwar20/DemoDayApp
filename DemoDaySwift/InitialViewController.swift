@@ -8,7 +8,7 @@
 
 import UIKit
 
-class InitialViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class InitialViewController: UIViewController {
 
     var datasource: Array <(title : String, subtitle : String, URL:URL)>?
     
@@ -24,6 +24,7 @@ class InitialViewController: UIViewController, UITableViewDelegate, UITableViewD
         // HARD CODED DATA
         //        datasource?.append((title:"Free Pizza", subtitle: "No really"))
         
+        // Initialize cache here for now
         URLCache.shared = URLCache(memoryCapacity: 4*1024*1024, diskCapacity: 40*1024*1024, diskPath: nil)
         
         let requestURL = URL(string: "https://alpha-api.app.net/stream/0/posts/stream/global")!
@@ -32,86 +33,111 @@ class InitialViewController: UIViewController, UITableViewDelegate, UITableViewD
         let task = session.dataTask(with: urlRequest) {
             (data, response, error) -> Void in
             
-            let httpResponse = response as! HTTPURLResponse
-            let statusCode = httpResponse.statusCode
-            
-            if (statusCode == 200) {
-                print("Everyone is fine, file downloaded successfully with response")
+            if let httpResponse = response as? HTTPURLResponse {
                 
-                do {
-                    let json:NSDictionary = try JSONSerialization.jsonObject(with: data!, options:.allowFragments) as! NSDictionary
+                let statusCode = httpResponse.statusCode
+                
+                if (statusCode == 200) {
+                    print("Everyone is fine, file downloaded successfully with response")
                     
-                    if let posts = json["data"] as? Array<NSDictionary> {
-                        self.datasource = Array()
-                        for post in posts {
-                            if let userDict = post["user"] as? NSDictionary {
-                                
-                                if let userName = userDict["username"] {
-                                    // If we have a valid user name get 'text' and avatar URL
-                                    var subtitleString:String?
-                                    var url:URL?
+                    do {
+                        let json:NSDictionary = try JSONSerialization.jsonObject(with: data!, options:.allowFragments) as! NSDictionary
+                        
+                        if let posts = json["data"] as? Array<NSDictionary> {
+                            self.datasource = Array()
+                            for post in posts {
+                                if let userDict = post["user"] as? NSDictionary {
                                     
-                                    
-                                    
-                                    // Get avatar image url
-                                    if let avatarData = userDict["avatar_image"] {
+                                    if let userName = userDict["username"] {
+                                        // If we have a valid user name get 'text' and avatar URL
+                                        var subtitleString:String?
+                                        var url:URL?
                                         
-                                        if let avatarDict = avatarData as? NSDictionary {
-                                            //url = avatarDict.value(forKey: "url") as! URL?
-                                            url = URL(string: avatarDict.value(forKey: "url") as! String)
+                                        
+                                        
+                                        // Get avatar image url
+                                        if let avatarData = userDict["avatar_image"] {
+                                            
+                                            if let avatarDict = avatarData as? NSDictionary {
+                                                //url = avatarDict.value(forKey: "url") as! URL?
+                                                url = URL(string: avatarDict.value(forKey: "url") as! String)
+                                            }
                                         }
+                                        
+                                        // Get subtitle as text
+                                        if let text = post["text"] {
+                                            
+                                            subtitleString = text as? String
+                                            print(userName,text)
+                                        }
+                                        
+                                        if  let unwrappedTitle = (userName as? String), let unwrappedSubtitle = subtitleString, let imageURL:URL = url {
+                                            //self.datasource?.append((title:title, subtitle:subtitle, URL:imageURL))
+                                            self.datasource?.append((title:unwrappedTitle, subtitle:unwrappedSubtitle, URL:imageURL))
+                                            
+                                            
+                                            
+                                        }
+                                        
+                                        
                                     }
-                                    
-                                    // Get subtitle as text
-                                    if let text = post["text"] {
-                                        
-                                        subtitleString = text as? String
-                                        print(userName,text)
-                                    }
-                                    
-                                    if  let unwrappedTitle = (userName as? String), let unwrappedSubtitle = subtitleString, let imageURL:URL = url {
-                                        //self.datasource?.append((title:title, subtitle:subtitle, URL:imageURL))
-                                        self.datasource?.append((title:unwrappedTitle, subtitle:unwrappedSubtitle, URL:imageURL))
-                                        
-                                        
-                                        
-                                    }
-
-                                    
                                 }
                             }
-                        }
-                        DispatchQueue.main.async(execute: {
-                            self.swiftDemoDayTableView.reloadData()
-                            
-                            UIView.animate(withDuration: 0.25, delay: 0.0, options: .curveEaseInOut, animations: {
-                                self.loaderBGView.alpha = 0.0
-                                }, completion: { (didFinish) in
-                                    
-                                    if (didFinish) {
-                                        self.loaderBGView.isHidden = true
-                                        self.activityIndicator.stopAnimating()
-                                    }
+                            DispatchQueue.main.async(execute: {
+                                self.swiftDemoDayTableView.reloadData()
+                                
+                                UIView.animate(withDuration: 0.25, delay: 0.0, options: .curveEaseInOut, animations: {
+                                    self.loaderBGView.alpha = 0.0
+                                    }, completion: { (didFinish) in
+                                        
+                                        if (didFinish) {
+                                            self.loaderBGView.isHidden = true
+                                            self.activityIndicator.stopAnimating()
+                                        }
+                                })
                             })
-                        })
+                        }
+                    } catch {
+                        print("Error with Json: \(error)")
+                        
                     }
-                } catch {
-                    print("Error with Json: \(error)")
                     
                 }
-                
+                    
+                else {
+                    
+                    print("Error with api call status: \(error?.localizedDescription)")
+                    
+                }
             }
-                
             else {
-                
                 print("Error with api call: \(error?.localizedDescription)")
-                
             }
+            
         }
-        
+            
+            
         task.resume()
     
     }
+
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
+        let cell: SwiftDemoDayTableViewCell = sender as! SwiftDemoDayTableViewCell
+        let indexPath:IndexPath? = self.swiftDemoDayTableView.indexPath(for: cell)
+        
+        if let indexPathValue = indexPath {
+            let item = datasource?[indexPathValue.row]
+            let detailVC:SwiftDemoDayDetailViewController = segue.destination as! SwiftDemoDayDetailViewController
+            detailVC.text = (item?.title)!
+        }
+        
+    }
+}
+
+
+extension InitialViewController:UITableViewDataSource, UITableViewDelegate {
 
     func numberOfSections(in tableView: UITableView) -> Int {
         return 1
@@ -133,9 +159,8 @@ class InitialViewController: UIViewController, UITableViewDelegate, UITableViewD
         let (titleString, subtitleString, url) = (datasource?[indexPath.row])!
         cell.configure(title: titleString, subtitle: subtitleString, imageURL: url)
         return cell
-        
-        
     }
+    
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return UITableViewAutomaticDimension
@@ -145,18 +170,8 @@ class InitialViewController: UIViewController, UITableViewDelegate, UITableViewD
         return 90
     }
     
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        
-        let cell: SwiftDemoDayTableViewCell = sender as! SwiftDemoDayTableViewCell
-        let indexPath:IndexPath? = self.swiftDemoDayTableView.indexPath(for: cell)
-        
-        if let indexPathValue = indexPath {
-            let item = datasource?[indexPathValue.row]
-            let detailVC:SwiftDemoDayDetailViewController = segue.destination as! SwiftDemoDayDetailViewController
-            detailVC.text = (item?.title)!
-        }
-        
-    }
-    
-
 }
+
+
+
+
